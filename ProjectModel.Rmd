@@ -1,0 +1,109 @@
+---
+title: "ProjectModel"
+author: "Adediran Ifeoluwa"
+date: "April 21, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(xml2)
+library(rvest)
+library(stringr)
+library(ggplot2)
+url <- "https://github.com/fivethirtyeight/data/blob/master/unisex-names/unisex_names_table.csv"
+sc <- read_html(url)
+table <- sc %>%
+    html_nodes("table") %>%
+    html_table(header=T)
+	
+record <- table[[1]] 
+
+record <- record[, colSums(is.na(record)) != nrow(record)]
+setnames(record, c(""), c("id"))
+
+record$male_share <- round(record$male_share, 3)
+record$female_share <- round(record$female_share, 3)
+record$gap <- round(record$gap, 3)
+
+colnames(record)
+
+```
+
+## R Markdown
+
+A residual plot is a graph that shows the residuals on the vertical axis and the independent variable on the horizontal axis. If the points in a residual plot are randomly dispersed around the horizontal axis, a linear regression model is appropriate for the data; otherwise, a non-linear model is more appropriate.
+
+Residual = Observed value - Predicted value 
+e = y - y 
+
+
+```{r}
+
+
+fit <- glm(male_share ~ female_share, data=record, family = quasibinomial)
+resid <- resid(fit) 
+plot(record$female_share, resid, ylab = "Residuals", xlab = "Female Share", main="Plot 1")
+glm.probs <- predict(fit,type = "response")
+summary(fit)$coef
+exp(coef(fit))
+##female_share 
+##    0.01663715 
+
+#My significance level is 0.05. The p-values for the independent variable is less than the significance level of the model which implies that the variable female_share is statistically significant to the model. There is a negative correlation between the independent variable the dependent variables. The points in the residual plot were not randomly dispersed around the horizontal axis. A non-linear model is more appropriate for this analysis.
+
+
+```
+
+
+
+```{r}
+
+fit2 <- glm(male_share ~ gap, data=record, family = quasipoisson)
+resid <- resid(fit2) 
+plot(record$gap, resid, ylab = "Residuals", xlab = "Gap between male_share and female_share", main="Plot 2")
+glm.probs <- predict(fit2,type = "response")
+
+summary(fit2)$coef
+#              Estimate Std. Error     t value      Pr(>|t|)
+#(Intercept) -0.68909300 0.01323858 -52.0518826 5.135597e-276
+#gap          0.05887123 0.06627775   0.8882503  3.746390e-01
+
+exp(coef(fit2))
+#(Intercept)         gap 
+#	0.5020312   1.0606387 
+
+#My significance level is 0.05. The p-values for the independent variable is greater than the significance level of the model which implies that the variable Gap is statistically not significant to the model. There is a negative correlation between the independent variable the dependent variables. The points in the residual plot were not randomly dispersed around the horizontal axis. A non-linear model is more appropriate for this analysis.
+
+
+```
+
+
+
+
+```{r}
+
+fit3 <- lm(male_share ~ total, data=record)
+resid <- resid(fit3) 
+plot(record$total, resid, ylab = "Residuals", xlab = "Total number of living Americans with the name", main="Plot 3")
+glm.probs <- predict(fit3,type = "response")
+
+summary(fit3)$coef
+#                 Estimate   Std. Error    t value  Pr(>|t|)
+#(Intercept)  5.081419e-01 3.365931e-03 150.966226 0.0000000
+#total       -2.983134e-07 2.425078e-07  -1.230119 0.2189681
+
+summary(resid)
+#   Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -0.17410 -0.08906  0.00694  0.00000  0.08482  0.16467 
+
+exp(coef(fit3))
+#(Intercept)         total 
+#  1.6621997   0.9999997 
+
+#My significance level is 0.05. The p-value for the independent variable is greater than the significance level of the model which implies that the variable total is statistically not significant to the model. The points in the residual plot were randomly dispersed around the horizontal axis. A linear model is more appropriate for this analysis.
+
+
+``` 

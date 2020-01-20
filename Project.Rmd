@@ -1,0 +1,109 @@
+---
+title: "Project"
+author: "Adediran Ifeoluwa"
+date: "March 31, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(xml2)
+library(rvest)
+library(stringr)
+library(ggplot2)
+
+url <- "https://github.com/fivethirtyeight/data/blob/master/comma-survey/comma-survey.csv"
+sc <- read_html(url)
+
+table <- sc %>%
+    html_nodes("table") %>%
+    html_table(header=T)
+	
+record <- table[[1]]  
+
+record$HouseholdIncomeFormat <- gsub("[\\$,]", "", record$`Household Income`)
+record$HouseholdIncomeFormat <- gsub("[\\+,]", "", record$HouseholdIncomeFormat)  
+record$HouseholdIncomeFormat <- gsub("\\s+", "", record$HouseholdIncomeFormat) 
+
+record <- record[!(is.na(record$HouseholdIncomeFormat) | record$HouseholdIncomeFormat==""), ]
+
+record <- record[!(is.na(record$Age) | record$Age==""), ]
+record$Age <- gsub("[\\>,]", "", record$Age) 
+record$Age <- gsub("\\s+", "", record$Age) 
+
+
+n <- length(record$RespondentID) 
+
+for (i in 1 : n){
+check <- str_detect(record$HouseholdIncomeFormat[i], "-")
+if(!check){
+	record$averageHouseholdIncome[i] <- as.numeric(record$HouseholdIncomeFormat[i])
+} else {
+	split <- str_split(record$HouseholdIncomeFormat[i], "-", simplify = TRUE)
+	col1 <- as.numeric(split[1,1]) 
+	col2 <- as.numeric(split[1,2])
+	solve <- (col1 + col2) / 2;
+	record$averageHouseholdIncome[i] <- solve
+} 
+
+}
+
+for (i in 1 : n){
+	check <- str_detect(record$Age[i], "-")
+	if(!check){
+		record$averageAge[i] <- as.numeric(record$Age[i])
+	} else {
+		split <- str_split(record$Age[i], "-", simplify = TRUE)
+		col1 <- as.numeric(split[1,1]) 
+		col2 <- as.numeric(split[1,2])
+		solve <- (col1 + col2) / 2;
+		record$averageAge[i] <- solve
+	} 
+
+}
+
+record$Gender <- as.factor(record$Gender)
+
+```
+
+## R Markdown
+
+This record contains the data behind the story Elitist, Superfluous, Or Popular? Polls based on the Oxford Comma. Participants: Americans.
+Source: FiveThirtyEight data repository.
+FiveThirtyEight uses statistical analysis - hard numbers - to tell compelling stories about elections, politics, sports, science, economics and sports blogging.
+
+Link: https://github.com/fivethirtyeight/data/blob/master/comma-survey/
+
+Introduction:
+In English language punctuation, a serial comma or series comma (also called an Oxford comma or a Harvard comma) is a comma inserted just before the coordinating conjunction in a series of three or more terms. For example, a list of three premier league clubs might be introduced as either as "Arsenal, Chelsea, and Manchester United" (with the serial comma), or as "Arsenal, Chelsea and Manchester United" (without the serial comma). 	-Source: Wikipedia
+
+Having studied the data carefully, what got my attention was the household income. Could a serial comma intuition have an impact on household income? That's the basis of choosing this survey.
+
+Question: Using the data from the comma survey, I am curious to know if participants responses on the question "How much, if at all, do you care about the debate over the use of the word 'data' as a singular or plural noun? " could influence their household income, factor by a nominal variable - Gender.
+
+```{r}
+summary(record)
+```
+
+## Including Plots 
+
+```{r, echo=FALSE}
+setTimeLimit(); 
+setSessionTimeLimit();
+
+p1 <- ggplot(record, aes(averageAge, averageHouseholdIncome, color = Gender)) 
+p1 <- p1 + geom_point()
+p1 <- p1 + geom_smooth(method='lm', se = FALSE, na.rm=TRUE) 
+p1 <- p1 + ggtitle("Analysis on Comma Survey") 
+p1 <- p1 + labs(x = 'Average Age', y= 'Average Income') 
+p1 <- p1 + facet_grid(Gender ~ `How much, if at all, do you care about the debate over the use of the word "data" as a singluar or plural noun?`)
+
+setTimeLimit(); 
+setSessionTimeLimit();
+
+p1 
+  
+
+```
+
+Conclusion: Based on the report from the plot, I noticed that the average income margin are similar for men. Although, there is a clear shift on the average income for men that responded with "A lot" for the question "How much, if at all, do you care about the debate over the use of the word 'data' as a singular or plural noun? ". Generally, for the men group, their responses make a little impact on the average household income. For the women group, it's clear that those participants that responded with "A lot" have higher average household income compare to other responses. In fact, for women that responded with "Some" for that question, their average household income most likely would be under $80,000. There are other factors that might constitute to the accuracy of this report like age, and responses from other questions been asked for this survey. In conclusion, the responses from the female group clearly show an influence on the average income for that group. 
